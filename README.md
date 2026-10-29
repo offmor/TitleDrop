@@ -6,11 +6,13 @@
 
 [**Download v1.0**](https://github.com/offmor/TitleDrop/releases/download/v1.0/titledrop-1.0.xpi) · [Release notes](https://github.com/offmor/TitleDrop/releases/tag/v1.0) · [Report an issue](https://github.com/offmor/TitleDrop/issues) · [MIT License](LICENSE)
 
-**Compatibility:** Zotero 10.0.x. Tested on Zotero 10.0.6 for macOS. v1.0 is the initial public release; Windows/Linux and recognition accuracy across a broad range of publishers still need validation. No AI account, API key, or separate Python installation is required to use the plugin.
+**Requires Zotero 10.0.x.** Tested on macOS with Zotero 10.0.6; Windows and Linux are not yet verified. No AI account, API key, or separate Python installation is required.
+
+For example, the included [demo PDF](examples/synthetic-paper.pdf) is renamed from `synthetic-paper.pdf` to `A Simple Method for Organizing Research Papers.pdf`. Both the attachment label in Zotero and the actual filename are updated.
 
 [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Settings](#settings) · [FAQ and troubleshooting](#faq-and-troubleshooting) · [Privacy](#privacy) · [Contributing and support](#contributing-and-support) · [Credits](#credits)
 
-![TitleDrop settings panel](docs/images/settings-panel.png)
+<p align="center"><img src="docs/images/settings-panel.png" width="640" alt="TitleDrop settings panel" /></p>
 
 ## Features
 
@@ -23,10 +25,12 @@
 - **Recovery and activity.** Undo recent renames and export a local JSON report.
 - **Appearance and privacy controls.** Choose light, dark, or system appearance; hide paper names when taking dashboard screenshots.
 
-![TitleDrop processing dashboard](docs/images/progress-panel.png)
-
 <details>
-<summary>More screenshots</summary>
+<summary>View the processing dashboard and more screenshots</summary>
+
+**Processing dashboard**
+
+![TitleDrop processing dashboard](docs/images/progress-panel.png)
 
 **Dark appearance**
 
@@ -76,6 +80,8 @@ The [example first page](docs/images/example-first-page.png) and [fixture notes]
 - To process specific PDFs, select their attachments or parent items, then right-click and choose **TitleDrop: Rename Selected PDFs**. The same action is available under **Tools → TitleDrop**.
 - Open **Tools → TitleDrop → Processing Dashboard** to follow the queue.
 
+For linked PDFs stored outside Zotero's storage folder, manual processing can rename the original file in its current location. This includes library scans, selected-file processing, review retries and **Use title**. Newly imported linked PDFs are sent to review instead of being renamed automatically.
+
 **Pause processing** stops the next queued job; an operation already in progress may finish. **Resume processing** continues the saved queue. The automatic-import switch controls new-import automation separately.
 
 ### Review a title
@@ -86,6 +92,8 @@ The [example first page](docs/images/example-first-page.png) and [fixture notes]
 
 Turn off **Hide paper titles for screenshots** to display and edit proposed titles. **Show in library** selects the corresponding attachment in Zotero.
 
+**Use title** also updates the parent bibliographic item's title, or creates a minimal parent item for a standalone PDF. **Keep original** skips automatic naming for that PDF until you explicitly process it again.
+
 ### Restore missing PDFs
 
 **Unavailable files** means the attachment record exists but its PDF is unavailable locally. TitleDrop can request the file through your existing Zotero sync configuration during a library scan. If retrieval fails, the current name stays unchanged.
@@ -94,7 +102,7 @@ Restore the PDF from another device or file sync, then choose **Retry downloads*
 
 ### Undo and export
 
-**Undo last rename** restores the previous attachment title and filename while keeping bibliographic metadata. The last 80 renames are retained. Undo refuses to overwrite another file, act on a filename changed since the rename, or race active processing. An undone PDF is excluded from automatic naming until you explicitly process it again.
+**Undo last rename** restores the previous attachment label and filename. It does not remove a newly created parent item or revert changes to that item's title or other bibliographic metadata. The last 80 renames are retained. Undo refuses to overwrite another file, act on a filename changed since the rename, or race active processing. An undone PDF is excluded from automatic naming until you explicitly process it again.
 
 **Export report** saves a JSON report with counts, review records, rename history and recent activity. Reports may contain paper titles and filenames; screenshot privacy does not anonymize them.
 
@@ -127,8 +135,6 @@ Import wait time and notifications are under **Advanced options**. Screenshot pr
 | A PDF cannot be recognized | Confirm it has selectable text and a readable first-page title. For ambiguous layouts, enter the exact title in **Title review**. OCR is not included. |
 | A filename differs slightly from the title | Filesystem-invalid characters are removed, long names are shortened, and collisions receive a suffix. The attachment label can keep the fuller title. |
 
-TitleDrop does not require an LLM or an API key. The development-assistance credit below does not indicate a runtime AI dependency.
-
 ## Updating and uninstalling
 
 The public XPI includes an update feed for future stable releases through Zotero's plugin updater. You can also download an XPI from [Releases](https://github.com/offmor/TitleDrop/releases) and install it through the same **Install Plugin From File…** menu to replace the installed version. Local development builds have automatic updates disabled; install the public XPI to use the release feed. Check the [changelog](CHANGELOG.md) before changing versions.
@@ -157,7 +163,7 @@ Processing state is stored in `titledrop-state.json` in the Zotero data director
 
 - Scanned PDFs without selectable text, encrypted files, cover pages and ambiguous layouts can require manual title entry.
 - Existing parent metadata is trusted and may itself be incorrect. TitleDrop is not a complete bibliographic repair tool.
-- New linked PDFs are deferred to review. Explicitly processing selected linked PDFs or an existing library can rename their external files.
+- Linked PDFs remain in their original location, but manual processing can rename those external files; see [existing library or selected papers](#existing-library-or-selected-papers).
 - Recognition is not guaranteed. The current tests are engineering checks, not an accuracy benchmark across publishers.
 - Live UI testing currently covers Zotero 10.0.6 on macOS. Other operating systems and future Zotero versions need further testing.
 
