@@ -19,7 +19,7 @@ The 1.0 validation run passed 36 tests. Tests use Node's built-in runner, includ
 - Installed version 1.0: light/system and dark appearance, vertically centered button labels, unavailable-file privacy labels, and the dashboard close shortcut were checked live.
 - A real single-PDF queue remained at 0/1 while paused and reached 1/1 after the dashboard's Resume button was clicked. The compact progress widget was also rendered and captured.
 - A JSON report was exported through the native save dialog and parsed successfully. The local atomic state file retained 99 managed entries and 97 unavailable-file entries.
-- A separate public-release build was checked for its repository URLs, matching update SHA-256, and enabled normal update policy. It was not installed or published.
+- A public-release build for `offmor/TitleDrop` was checked for its repository URLs, matching update SHA-256, and enabled normal update policy. The installed local package uses the same plugin code with private-build update settings.
 
 Screenshots in `docs/images/` were captured from the installed plugin using Gecko's native `drawSnapshot` renderer through Zotero's developer console, then visually inspected. They show real library/queue counts, not mock data. Item identifiers, original filenames and audit backups stay in ignored directories.
 
@@ -29,8 +29,9 @@ Screenshots in `docs/images/` were captured from the installed plugin using Geck
 - Public branding, Zotero version and release tag are v1.0. The npm development manifest uses the equivalent semver form 1.0.0.
 - The repository has no earlier commits containing reference material. Current source, images, PDF metadata, and release archive contents were inspected before publication.
 - Regression tests reproduce and cover a native-recognition race at the database transaction boundary, undo during an active operation, and the title-review menu destination.
-- A clean 36-file source export passed all 36 tests and built an 11-file XPI from an isolated directory. The public update manifest's v1.0 URL and SHA-256 matched that artifact. This is a local clean-build check, not a GitHub Actions run.
+- A clean source export passed all 36 tests and built an 11-file XPI from an isolated directory. The public update manifest's v1.0 URL and SHA-256 matched that artifact.
+- The first public [GitHub Actions run](https://github.com/offmor/TitleDrop/actions/runs/40873226275) passed tests and built the XPI on an Ubuntu runner. This does not constitute Linux Zotero UI testing.
 
 ## Remaining scope
 
-Recognition quality has not been benchmarked over a labeled multi-publisher corpus. Windows/Linux UI and future Zotero versions require additional testing. The GitHub Actions workflow has not run on GitHub until the repository is published.
+Recognition quality has not been benchmarked over a labeled multi-publisher corpus. Windows/Linux UI and future Zotero versions require additional testing.
