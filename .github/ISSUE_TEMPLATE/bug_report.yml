@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a reproducible problem with TitleDrop.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: Please use public or synthetic examples. Do not upload unpublished PDFs, personal library reports, credentials, or unreviewed logs.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include the versions and operating system used when the problem occurred.
+      value: |
+        Zotero:
+        TitleDrop:
+        Operating system:
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Describe the actions needed to reproduce the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include a relevant error message if available.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Public example or screenshot
+      description: Optional public PDF URL, synthetic fixture, or screenshot with private titles hidden.

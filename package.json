@@ -1,0 +1,14 @@
+{
+  "name": "titledrop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Automatic, evidence-based PDF title naming for Zotero",
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "build": "python3 scripts/build.py"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,10 @@
+dist/
+tmp/
+.DS_Store
+__pycache__/
+backups/
+.env
+.env.*
+*.log
+titledrop-state*.json
+titledrop-report*.json

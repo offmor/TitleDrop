@@ -1,0 +1,19 @@
+{
+  "manifest_version": 2,
+  "name": "TitleDrop",
+  "version": "1.0",
+  "description": "Drop a paper. Keep its title. Automatic PDF naming with local extraction and identifier checks.",
+  "author": "TitleDrop",
+  "applications": {
+    "zotero": {
+      "id": "titledrop@local",
+      "update_url": "https://titledrop.invalid/updates.json",
+      "strict_min_version": "10.0",
+      "strict_max_version": "10.0.*"
+    }
+  },
+  "icons": {
+    "48": "icon.svg",
+    "96": "icon.svg"
+  }
+}
