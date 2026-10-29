@@ -6,7 +6,9 @@ Environment: Zotero 10.0.6, macOS. These are engineering checks, not a recogniti
 
 Tests cover restricted bootstrap globals, title extraction, identifier checks, filename safety, parent/recognizer races, unavailable files, rename failures, undo, shutdown, queue recovery, library scope, pause/resume, offline-only operation, progress accounting, and atomic state migration.
 
-The 1.0 validation run passed 36 tests. Tests use Node's built-in runner, including mocked Zotero integration. They do not replace real-app tests.
+The updated 1.0 validation run passed 44 tests. Tests use Node's built-in runner, including mocked Zotero integration. They do not replace real-app tests.
+
+The manual-title fix adds coverage for invalid titles, unavailable or locked files, metadata-save rollback, standalone parent cleanup, safe filename recovery, concurrent recognition and successful manual confirmation with undo. Failure scenarios are simulated without editing a real library. Database transaction and attachment-rename behavior were checked against the installed Zotero source; the new failure paths have not been exercised in a live Zotero profile.
 
 ## Live checks
 

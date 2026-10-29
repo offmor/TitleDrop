@@ -288,20 +288,24 @@ var TitleDrop = {
       return true;
     });
   },
-  async rename(item, title, source) {
+  async rename(item, title, source, confirmParent = false) {
     if (!this.running || item.deleted) return;
     const quiet = this.state.pending[item.id]?.quiet;
     const filename = this.C.safeFilename(title), previousName = item.attachmentFilename;
-    const previousTitle = item.getField('title');
+    const previousTitle = item.getField('title'), previousParentID = item.parentID;
     const managed = this.state.managed[item.id];
-    if (managed?.title === title && managed?.filename === previousName && previousTitle === title) {
+    if (!confirmParent && managed?.title === title && managed?.filename === previousName && previousTitle === title) {
       delete this.state.pending[item.id]; delete this.state.review[item.id]; this.persist(); return;
     }
     const out = {};
     const ok = await item.renameAttachmentFile(filename, {overwrite:false, unique:true, out});
     if (ok !== true) throw new Error('The PDF could not be renamed (missing, locked, or unavailable).');
-    item.setField('title', title);
-    await item.saveTx();
+    if (confirmParent) {
+      await this.saveConfirmedTitle(item, title, previousParentID, previousName);
+    } else {
+      item.setField('title', title);
+      await item.saveTx();
+    }
     this.state.managed[item.id] = {title, filename:item.attachmentFilename, source, ignored:false};
     delete this.state.pending[item.id]; delete this.state.review[item.id];
     if (previousName !== item.attachmentFilename || previousTitle !== title) {
@@ -311,6 +315,59 @@ var TitleDrop = {
       if (!quiet) this.toast('PDF renamed', title);
     }
     this.persist(); this.refreshWindows();
+  },
+  async saveConfirmedTitle(item, title, previousParentID, previousName) {
+    const renamedFilename = item.attachmentFilename;
+    let existingParent;
+    try {
+      // renameAttachmentFile() saves its own transaction, so it must finish
+      // before this one. Parent and attachment metadata then commit together.
+      await Zotero.DB.executeTransaction(async () => {
+        if (!this.running || item.deleted || item.parentID !== previousParentID || this.nativeBusy(item.id)) {
+          throw new Error('This PDF changed during recognition. Review its current title and try again.');
+        }
+        if (previousParentID) {
+          existingParent = await Zotero.Items.getAsync(previousParentID);
+          if (!existingParent || existingParent.deleted || !this.running || item.parentID !== previousParentID) {
+            throw new Error('The parent item changed. Review the PDF and try again.');
+          }
+          existingParent.setField('title', title);
+          await existingParent.save();
+        } else {
+          const parent = new Zotero.Item('document');
+          parent.libraryID = item.libraryID;
+          parent.setField('title', title);
+          parent.setCollections(item.getCollections());
+          await parent.save();
+          item.parentID = parent.id;
+        }
+        item.setField('title', title);
+        await item.save();
+      });
+    } catch (error) {
+      // A database rollback does not restore files or every cached item.
+      // Reload committed metadata, then undo only our own filename change.
+      const recoveryErrors = [];
+      let itemReloaded = false;
+      for (const object of [existingParent, item].filter(Boolean)) {
+        try { await object.reload(null, true); if (object === item) itemReloaded = true; }
+        catch (e) { recoveryErrors.push(e); Zotero.logError(e); }
+      }
+      if (item.attachmentFilename !== previousName) {
+        try {
+          if (!itemReloaded) throw new Error('Attachment metadata could not be reloaded; filename recovery was not attempted.');
+          if (item.attachmentFilename !== renamedFilename) throw new Error('The filename changed again; it was not overwritten.');
+          const restored = await item.renameAttachmentFile(previousName, {overwrite:false, unique:false});
+          if (restored !== true) throw new Error('The original filename could not be restored.');
+        } catch (e) { recoveryErrors.push(e); Zotero.logError(e); }
+      }
+      if (recoveryErrors.length) {
+        const message = 'The title could not be saved and recovery was incomplete. Check this PDF in Zotero before retrying. ' + error.message;
+        this.review(item.id, title, message);
+        throw new Error(message);
+      }
+      throw error;
+    }
   },
   review(id, title, reason) {
     if (!this.running) return;
@@ -323,19 +380,16 @@ var TitleDrop = {
   async confirmTitle(id, title) {
     title = this.C.clean(title);
     if (title.length < 2) throw new Error('Please enter the paper title.');
+    // Reject titles such as "///" before touching a file or bibliographic item.
+    this.C.safeFilename(title);
     if (this.busy.has(id)) throw new Error('This PDF is being processed. Try again shortly.');
     this.busy.add(id);
     try {
       const item = await this.usable(id);
       if (!item) throw new Error('This PDF is no longer available.');
-      if (item.parentID) {
-        const parent = await Zotero.Items.getAsync(item.parentID);
-        parent.setField('title',title); await parent.saveTx();
-      } else if (!await this.createParent(item, {title, source:'User-confirmed title'})) {
-        throw new Error('This PDF changed during recognition. Review its current title and try again.');
-      }
-      await this.rename(item,title,'User-confirmed title');
-    } finally { this.busy.delete(id); }
+      if (this.nativeBusy(id)) throw new Error('Zotero is recognizing this PDF. Try again after it finishes.');
+      await this.rename(item,title,'User-confirmed title',true);
+    } finally { this.busy.delete(id); this.refreshWindows(); }
   },
   async undo() {
     const record = this.state.history.at(-1);

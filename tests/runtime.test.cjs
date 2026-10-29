@@ -14,6 +14,7 @@ function harness() {
   getCollections(){return [...this.collections];}setCollections(v){this.collections=[...v];}setCreators(v){this.creators=v;}
   async getFilePathAsync(){return '/storage/'+this.attachmentFilename;}
   async save(){calls.push(['save',this.id]);if(this.parentID)this.collections=[];return this.id;}async saveTx(){return this.save();}
+  async reload(){calls.push(['reload',this.id]);}
   async renameAttachmentFile(name,options){calls.push(['rename',this.id,name,options]);this.attachmentFilename=name;return true;}
  }
  const Zotero={initializationPromise:Promise.resolve(),Item,debug(){},logError(){},
@@ -188,4 +189,144 @@ test('Review Titles menu opens the review tab',async()=>{
  const h=harness();await h.plugin.start();let tab;
  h.plugin.UI={openDashboard:value=>{tab=value;}};h.plugin.showReview();
  assert.equal(tab,'review');
+});
+
+// Model SQL rollback independently of filesystem renames. Zotero's save()
+// participates in the outer transaction; renameAttachmentFile() must not.
+function transactionalHarness() {
+ const h=harness();let active=false;
+ h.Zotero.DB.executeTransaction=async fn=>{
+  assert.equal(active,false,'nested transactions would wait on themselves');
+  const before=new Map([...h.map].map(([id,item])=>[id,{
+   fields:{...item.fields},parentID:item.parentID,collections:[...item.collections]
+  }]));
+  active=true;
+  try{return await fn();}
+  catch(error){
+   for(const [id,item] of h.map){
+    const state=before.get(id);
+    if(state)Object.assign(item,state);
+    else h.map.delete(id);
+   }
+   throw error;
+  }finally{active=false;}
+ };
+ const original=h.Item.prototype.renameAttachmentFile;
+ h.Item.prototype.renameAttachmentFile=async function(...args){
+  assert.equal(active,false,'file renames must run outside the metadata transaction');
+  return original.apply(this,args);
+ };
+ return h;
+}
+
+test('invalid manual titles cannot modify an existing parent or create a new one',async()=>{
+ for(const hasParent of [false,true]){
+  const h=transactionalHarness();await h.plugin.start();const a=new h.Item();
+  const p=hasParent?new h.Item('document'):null;
+  if(p){p.setField('title','The Original Bibliographic Title');a.parentID=p.id;}
+  const count=h.map.size,name=a.attachmentFilename,label=a.getField('title');
+  for(const input of ['///','***','...'])await assert.rejects(()=>h.plugin.confirmTitle(a.id,input),/non-empty title/);
+  assert.equal(h.map.size,count);assert.equal(a.attachmentFilename,name);assert.equal(a.getField('title'),label);
+  if(p)assert.equal(p.getField('title'),'The Original Bibliographic Title');
+  assert.equal(h.calls.length,0);assert.equal(h.plugin.state.history.length,0);assert.equal(h.plugin.busy.size,0);
+ }
+});
+
+test('missing, locked and rejected files leave all manual-review metadata unchanged',async()=>{
+ for(const result of [false,-1,-2,'throw'])for(const hasParent of [false,true]){
+  const h=transactionalHarness();await h.plugin.start();const a=new h.Item();
+  const p=hasParent?new h.Item('document'):null;
+  if(p){p.setField('title','The Original Bibliographic Title');a.parentID=p.id;}
+  const count=h.map.size,label=a.getField('title');
+  h.plugin.review(a.id,'Candidate','Confirm this title');
+  a.renameAttachmentFile=async()=>{if(result==='throw')throw new Error('File is locked');return result;};
+  await assert.rejects(()=>h.plugin.confirmTitle(a.id,'The Confirmed Paper Title'),/renamed|locked/);
+  assert.equal(h.map.size,count);assert.equal(a.getField('title'),label);
+  if(p)assert.equal(p.getField('title'),'The Original Bibliographic Title');
+  assert.equal(h.calls.length,0);assert.equal(h.plugin.state.history.length,0);
+  assert.ok(h.plugin.state.review[a.id]);assert.equal(h.plugin.busy.size,0);
+ }
+});
+
+test('metadata-save failures roll back both parent and attachment and restore the filename',async()=>{
+ for(const failAt of ['parent','attachment']){
+  const h=transactionalHarness();await h.plugin.start();const a=new h.Item(),p=new h.Item('document');
+  p.setField('title','The Original Bibliographic Title');a.parentID=p.id;
+  const name=a.attachmentFilename,label=a.getField('title');
+  (failAt==='parent'?p:a).save=async()=>{throw new Error('Database write failed');};
+  await assert.rejects(()=>h.plugin.confirmTitle(a.id,'The Confirmed Paper Title'),/Database write failed/);
+  assert.equal(p.getField('title'),'The Original Bibliographic Title');
+  assert.equal(a.getField('title'),label);assert.equal(a.attachmentFilename,name);assert.equal(a.parentID,p.id);
+  assert.equal(h.plugin.state.history.length,0);assert.equal(h.plugin.state.managed[a.id],undefined);
+  assert.equal(h.plugin.busy.size,0);
+  const renames=h.calls.filter(c=>c[0]==='rename');assert.equal(renames.length,2);
+  assert.equal(renames[1][3].overwrite,false);assert.equal(renames[1][3].unique,false);
+  assert.deepEqual(h.calls.filter(c=>c[0]==='reload').map(c=>c[1]),[p.id,a.id]);
+ }
+});
+
+test('failed standalone confirmation removes the temporary parent and preserves collections',async()=>{
+ const h=transactionalHarness();await h.plugin.start();const a=new h.Item();
+ const name=a.attachmentFilename,label=a.getField('title');
+ a.save=async()=>{throw new Error('Attachment save failed');};
+ await assert.rejects(()=>h.plugin.confirmTitle(a.id,'The Confirmed Paper Title'),/Attachment save failed/);
+ assert.equal(h.map.size,1);assert.equal(a.parentID,null);assert.deepEqual(a.collections,[7,9]);
+ assert.equal(a.attachmentFilename,name);assert.equal(a.getField('title'),label);
+ assert.equal(h.plugin.state.history.length,0);assert.equal(h.plugin.busy.size,0);
+});
+
+test('failed filename recovery stays in review and cannot overwrite a conflicting file',async()=>{
+ const h=transactionalHarness();await h.plugin.start();const a=new h.Item(),p=new h.Item('document');a.parentID=p.id;
+ const oldTitle=p.getField('title'),rename=a.renameAttachmentFile;let attempts=0;
+ a.renameAttachmentFile=async function(name,options){
+  if(++attempts===2){assert.equal(options.overwrite,false);assert.equal(options.unique,false);return -1;}
+  return rename.call(this,name,options);
+ };
+ a.save=async()=>{throw new Error('Attachment save failed');};
+ await assert.rejects(()=>h.plugin.confirmTitle(a.id,'The Confirmed Paper Title'),/recovery was incomplete/);
+ assert.equal(p.getField('title'),oldTitle);assert.equal(h.plugin.state.history.length,0);
+ assert.match(h.plugin.state.review[a.id].reason,/recovery was incomplete/);
+ assert.equal(h.plugin.state.managed[a.id],undefined);assert.equal(h.plugin.busy.size,0);
+});
+
+test('native recognition winning during the file rename is not overwritten by manual confirmation',async()=>{
+ const h=transactionalHarness();await h.plugin.start();const a=new h.Item(),p=new h.Item('document');
+ p.setField('title','The Native Recognizer Title');const name=a.attachmentFilename,rename=a.renameAttachmentFile;
+ a.renameAttachmentFile=async function(...args){const result=await rename.apply(this,args);a.parentID=p.id;return result;};
+ await assert.rejects(()=>h.plugin.confirmTitle(a.id,'The Confirmed Paper Title'),/changed during recognition/);
+ assert.equal(p.getField('title'),'The Native Recognizer Title');assert.equal(a.parentID,p.id);
+ assert.equal(a.attachmentFilename,name);assert.equal(h.map.size,2);assert.equal(h.plugin.state.history.length,0);
+});
+
+test('recovery will not rename a file again if metadata cannot reload or its name changed externally',async()=>{
+ for(const failure of ['reload','external rename']){
+  const h=transactionalHarness();await h.plugin.start();const a=new h.Item(),p=new h.Item('document');a.parentID=p.id;
+  a.save=async()=>{throw new Error('Attachment save failed');};
+  a.reload=async()=>{
+   if(failure==='reload')throw new Error('Metadata is unavailable');
+   a.attachmentFilename='An External Filename.pdf';
+  };
+  await assert.rejects(()=>h.plugin.confirmTitle(a.id,'The Confirmed Paper Title'),/recovery was incomplete/);
+  assert.equal(h.calls.filter(c=>c[0]==='rename').length,1);
+  assert.ok(h.plugin.state.review[a.id]);assert.equal(h.plugin.state.history.length,0);
+  if(failure==='external rename')assert.equal(a.attachmentFilename,'An External Filename.pdf');
+ }
+});
+
+test('successful manual confirmation updates both titles and creates an undoable rename',async()=>{
+ for(const hasParent of [false,true]){
+  const h=transactionalHarness();await h.plugin.start();const a=new h.Item();
+  const p=hasParent?new h.Item('document'):null;if(p)a.parentID=p.id;
+  const name=a.attachmentFilename,label=a.getField('title'),key=a.key;
+  h.plugin.review(a.id,'Candidate','Confirm this title');
+  await h.plugin.confirmTitle(a.id,'The Confirmed Paper Title');
+  const parent=h.map.get(a.parentID);assert.equal(parent.getField('title'),'The Confirmed Paper Title');
+  assert.equal(a.getField('title'),'The Confirmed Paper Title');assert.equal(a.key,key);
+  assert.equal(a.attachmentFilename,'The Confirmed Paper Title.pdf');
+  assert.equal(h.map.size,2);if(!hasParent)assert.deepEqual(parent.collections,[7,9]);
+  assert.equal(h.plugin.state.review[a.id],undefined);assert.equal(h.plugin.state.history.length,1);
+  assert.equal(h.plugin.busy.size,0);assert.equal(h.calls[0][0],'rename');
+  await h.plugin.undo();assert.equal(a.attachmentFilename,name);assert.equal(a.getField('title'),label);
+  assert.equal(parent.getField('title'),'The Confirmed Paper Title');assert.equal(a.parentID,parent.id);
+ }
 });

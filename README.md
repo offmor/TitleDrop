@@ -137,6 +137,8 @@ Import wait time and notifications are under **Advanced options**. Screenshot pr
 
 ## Updating and uninstalling
 
+Already using an earlier v1.0 package? Reinstall the current XPI to receive the manual-title fix; the version number is unchanged.
+
 The public XPI includes an update feed for future stable releases through Zotero's plugin updater. You can also download an XPI from [Releases](https://github.com/offmor/TitleDrop/releases) and install it through the same **Install Plugin From File…** menu to replace the installed version. Local development builds have automatic updates disabled; install the public XPI to use the release feed. Check the [changelog](CHANGELOG.md) before changing versions.
 
 To stop using TitleDrop, disable or remove it under **Tools → Plugins**. This stops automation but does not reverse completed renames or delete bibliographic items. Use **Undo last rename** before removing the plugin if you want to restore recent filenames. Its local processing-state file is retained, so reinstalling can recover that state.
