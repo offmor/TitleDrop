@@ -6,7 +6,7 @@
 
 [**Download v1.0**](https://github.com/offmor/TitleDrop/releases/download/v1.0/titledrop-1.0.xpi) · [Release notes](https://github.com/offmor/TitleDrop/releases/tag/v1.0) · [Report an issue](https://github.com/offmor/TitleDrop/issues) · [MIT License](LICENSE)
 
-**Compatibility:** Zotero 10.0.x. Tested on Zotero 10.0.6 for macOS. v1.0 is the initial public beta; Windows/Linux and recognition accuracy across a broad range of publishers still need validation. No AI account, API key, or separate Python installation is required to use the plugin.
+**Compatibility:** Zotero 10.0.x. Tested on Zotero 10.0.6 for macOS. v1.0 is the initial public release; Windows/Linux and recognition accuracy across a broad range of publishers still need validation. No AI account, API key, or separate Python installation is required to use the plugin.
 
 [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Settings](#settings) · [FAQ and troubleshooting](#faq-and-troubleshooting) · [Privacy](#privacy) · [Contributing and support](#contributing-and-support) · [Credits](#credits)
 
@@ -54,7 +54,7 @@ If your browser tries to install the XPI as a browser extension, save the downlo
 
 Automatic processing starts enabled for new PDFs. Installing the plugin does not scan or rename your existing library automatically.
 
-For consistent naming, set Zotero's own filename format to `{{ title }}`. During the public beta, install updates manually from Releases; GitHub's latest-release update feed excludes pre-releases.
+For consistent naming, set Zotero's own filename format to `{{ title }}`.
 
 ## Usage
 
@@ -131,7 +131,7 @@ TitleDrop does not require an LLM or an API key. The development-assistance cred
 
 ## Updating and uninstalling
 
-Download an XPI from [Releases](https://github.com/offmor/TitleDrop/releases) and install it through the same **Install Plugin From File…** menu to replace the installed version. Pre-release builds use manual updates. Check the [changelog](CHANGELOG.md) before changing versions.
+The public XPI includes an update feed for future stable releases through Zotero's plugin updater. You can also download an XPI from [Releases](https://github.com/offmor/TitleDrop/releases) and install it through the same **Install Plugin From File…** menu to replace the installed version. Local development builds have automatic updates disabled; install the public XPI to use the release feed. Check the [changelog](CHANGELOG.md) before changing versions.
 
 To stop using TitleDrop, disable or remove it under **Tools → Plugins**. This stops automation but does not reverse completed renames or delete bibliographic items. Use **Undo last rename** before removing the plugin if you want to restore recent filenames. Its local processing-state file is retained, so reinstalling can recover that state.
 

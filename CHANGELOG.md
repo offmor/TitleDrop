@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0 - Initial public beta
+## v1.0 - Initial public release
 
 - Automatic PDF title naming with verified identifier lookup, local title extraction, manual review and undo.
 - Explicit personal-library scans and optional retrieval of unavailable stored files.
@@ -11,4 +11,4 @@
 - Native-recognition race protection and a guard against undo during active processing.
 - Original fictional demonstration material, English documentation, MIT license and GitHub build checks.
 
-The public name and release tag remain **v1.0** during this preparation round.
+The initial public release and its Git tag are **v1.0**.
