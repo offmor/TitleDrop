@@ -64,7 +64,7 @@ For consistent naming, set Zotero's own filename format to `{{ title }}`.
 
 ### New PDFs
 
-Drag a PDF into Zotero as usual. TitleDrop queues the new attachment, waits for native recognition, and then attempts to use the paper title. If a title cannot be established with enough evidence, the PDF appears in **Title review**.
+Drag a PDF into Zotero as usual. If the PDF already belongs to a bibliographic item with a usable title, or TitleDrop can recognize its paper title, it can be renamed automatically. Standalone PDFs with unclear titles or no selectable text may need manual confirmation in **Title review**.
 
 Try the original [fictional demonstration PDF](examples/synthetic-paper.pdf). Its expected filename is:
 
